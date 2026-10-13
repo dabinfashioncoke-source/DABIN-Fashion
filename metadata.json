@@ -1,0 +1,8 @@
+{
+  "name": "DABIN Fashion",
+  "description": "Premium bilingual thrift fashion & lifestyle storefront with integrated POS, CRM, and inventory management based in Nairobi, Kenya.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
