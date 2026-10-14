@@ -15,7 +15,8 @@
     visibility: hidden;
   }
   #printable-receipt, #printable-receipt *,
-  #printable-document, #printable-document * {
+  #printable-document, #printable-document *,
+  #printable-finance-report, #printable-finance-report * {
     visibility: visible;
   }
   #printable-receipt {
@@ -30,7 +31,8 @@
     box-shadow: none !important;
     border: none !important;
   }
-  #printable-document {
+  #printable-document,
+  #printable-finance-report {
     position: absolute;
     left: 0;
     top: 0;

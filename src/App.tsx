@@ -17,6 +17,7 @@ import { AdminInventoryIntakePage } from './pages/admin/AdminInventoryIntakePage
 import { AdminReportsPage } from './pages/admin/AdminReportsPage';
 import { AdminSettingsPage } from './pages/admin/AdminSettingsPage';
 import { AdminDocumentsPage } from './pages/admin/AdminDocumentsPage';
+import { AdminFinancePage } from './pages/admin/AdminFinancePage';
 
 const AppRouter: React.FC = () => {
   const { currentRoute, settings, language, currentUser } = useApp();
@@ -74,6 +75,9 @@ const AppRouter: React.FC = () => {
   }
   if (currentRoute === '/admin/documents') {
     return <AdminDocumentsPage />;
+  }
+  if (currentRoute === '/admin/finance') {
+    return <AdminFinancePage />;
   }
   if (currentRoute === '/admin/intake') {
     return <AdminInventoryIntakePage />;

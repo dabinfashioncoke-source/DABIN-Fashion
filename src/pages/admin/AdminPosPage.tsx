@@ -34,6 +34,7 @@ import {
 } from '../../types';
 import { DabinLogo } from '../../components/common/DabinLogo';
 import { OFFICIAL_BUSINESS_INFO } from '../../constants/initialData';
+import { ShareDocumentModal } from '../../components/admin/ShareDocumentModal';
 
 interface CartItem {
   product: Product;
@@ -68,6 +69,36 @@ export const AdminPosPage: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [isSharingPdf, setIsSharingPdf] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [shareTargetSale, setShareTargetSale] = useState<Sale | null>(null);
+  const [autoSendReceiptWhatsApp, setAutoSendReceiptWhatsApp] = useState(true);
+
+  // Helper to generate full itemized text for WhatsApp, social platforms, and messages
+  const generateReceiptSummaryText = (sale: Sale): string => {
+    const currSym = sale.currency === 'USD' ? '$' : 'Ksh ';
+    const itemsList = sale.items
+      .map(
+        (it) =>
+          `• ${it.productName} (x${it.quantity}) - ${currSym}${it.totalPrice.toLocaleString()}`
+      )
+      .join('\n');
+
+    return (
+      `*DABIN FASHION HOUSE — OFFICIAL RECEIPT*\n` +
+      `Receipt No: #${sale.receiptNumber}\n` +
+      `Date: ${new Date(sale.timestamp).toLocaleString()}\n` +
+      `Customer: ${sale.customerName || 'Walk-in Client'}\n` +
+      `Cashier: ${sale.cashierName}\n\n` +
+      `*ITEMS PURCHASED:*\n${itemsList}\n\n` +
+      `*TOTAL:* ${currSym}${sale.total.toLocaleString()}\n` +
+      `*PAID:* ${currSym}${sale.amountPaid.toLocaleString()} (${sale.paymentMethod.toUpperCase()})\n` +
+      (sale.outstandingBalance > 0
+        ? `*OUTSTANDING BALANCE:* ${currSym}${sale.outstandingBalance.toLocaleString()}\n`
+        : `*STATUS:* FULLY PAID\n`) +
+      `\nNairobi, Kenya • Tel: ${OFFICIAL_BUSINESS_INFO.whatsappFormatted}\n` +
+      `Thank you for shopping with DABIN Fashion House!`
+    );
+  };
 
   const handleDownloadReceiptPdf = async (sale: Sale) => {
     const elem = document.getElementById('printable-receipt');
@@ -96,7 +127,7 @@ export const AdminPosPage: React.FC = () => {
         elem,
         `DABIN-Receipt-${sale.receiptNumber}.pdf`,
         `DABIN Fashion Receipt #${sale.receiptNumber}`,
-        `Official Receipt #${sale.receiptNumber} from DABIN Fashion House (${sale.currency} ${sale.total.toLocaleString()}).`
+        generateReceiptSummaryText(sale)
       );
     } catch (err) {
       console.error('Failed to share receipt PDF:', err);
@@ -215,7 +246,34 @@ export const AdminPosPage: React.FC = () => {
     });
 
     if (result.success && result.sale) {
-      setActiveReceiptSale(result.sale);
+      const recordedSale = result.sale;
+
+      // 1. Record inflow directly in Income & Expenses
+      storage.saveFinanceTransaction({
+        type: 'income',
+        category: 'pos_sales',
+        title: `POS Sale #${recordedSale.receiptNumber} (${recordedSale.customerName || 'Walk-in'})`,
+        amount: recordedSale.amountPaid,
+        currency: recordedSale.currency,
+        exchangeRateUsed: recordedSale.exchangeRateUsed,
+        date: recordedSale.timestamp.split('T')[0],
+        paymentMethod: recordedSale.paymentMethod,
+        referenceNumber: recordedSale.receiptNumber,
+        paidToOrFrom: recordedSale.customerName || 'Walk-in Customer',
+        notes: `Recorded automatically from POS checkout. Items count: ${recordedSale.items.length}`,
+        status: 'completed',
+        relatedSaleId: recordedSale.id,
+      });
+
+      // 2. Automated dispatch to client via WhatsApp if enabled
+      if (autoSendReceiptWhatsApp && recordedSale.customerPhone) {
+        const summary = generateReceiptSummaryText(recordedSale);
+        const cleanPhone = recordedSale.customerPhone.replace(/[^0-9]/g, '');
+        const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(summary)}`;
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
+
+      setActiveReceiptSale(recordedSale);
       setCart([]);
       setAmountPaidInput('');
       setSelectedCustomerId('');
@@ -596,12 +654,37 @@ export const AdminPosPage: React.FC = () => {
                 )}
               </div>
 
+              {/* Auto-send Receipt to Customer via WhatsApp */}
+              <div className="p-3 bg-emerald-50/80 border border-emerald-200 rounded-xl space-y-1 text-xs">
+                <label className="flex items-center gap-2 cursor-pointer font-semibold text-emerald-950">
+                  <input
+                    type="checkbox"
+                    checked={autoSendReceiptWhatsApp}
+                    onChange={(e) => setAutoSendReceiptWhatsApp(e.target.checked)}
+                    className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500"
+                  />
+                  <span>
+                    {language === 'fr'
+                      ? 'Transmettre le reçu automatiquement au client (WhatsApp)'
+                      : 'Send receipt automatically to client (WhatsApp)'}
+                  </span>
+                </label>
+                {(walkInPhone || selectedCustomerId) && (
+                  <p className="text-[10px] text-emerald-700 pl-6">
+                    {language === 'fr' ? 'Destinataire :' : 'Recipient:'}{' '}
+                    {walkInPhone ||
+                      customers.find((c) => c.id === selectedCustomerId)?.phone ||
+                      '—'}
+                  </p>
+                )}
+              </div>
+
               {/* Finalize Button */}
               <button
                 type="button"
                 disabled={cart.length === 0}
                 onClick={handleFinalizeSale}
-                className="w-full py-3 bg-[#7B173B] hover:bg-[#62122F] disabled:opacity-50 text-white font-semibold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
+                className="w-full py-3 bg-[#7B173B] hover:bg-[#62122F] disabled:opacity-50 text-white font-semibold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Receipt className="w-4 h-4" />
                 <span>{t.pos.finalizeSaleBtn}</span>
@@ -658,7 +741,7 @@ export const AdminPosPage: React.FC = () => {
                         </span>
                       </td>
                       <td className="py-3 px-4 text-right">
-                        <div className="inline-flex items-center gap-2">
+                        <div className="inline-flex items-center gap-1.5">
                           <button
                             type="button"
                             onClick={() => setActiveReceiptSale(sale)}
@@ -666,6 +749,18 @@ export const AdminPosPage: React.FC = () => {
                             title="View / Print Receipt"
                           >
                             <Printer className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveReceiptSale(sale);
+                              setShareTargetSale(sale);
+                              setIsShareModalOpen(true);
+                            }}
+                            className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded"
+                            title="Share Receipt (WhatsApp, Instagram, TikTok, Facebook, PDF)"
+                          >
+                            <Share2 className="w-4 h-4" />
                           </button>
                           {sale.paymentStatus !== 'refunded' && (
                             <button
@@ -711,20 +806,18 @@ export const AdminPosPage: React.FC = () => {
                     <span>{isDownloadingPdf ? 'PDF...' : 'PDF'}</span>
                   </button>
 
-                  {/* Share PDF */}
+                  {/* Share to All Platforms & PDF */}
                   <button
                     type="button"
-                    disabled={isSharingPdf}
-                    onClick={() => handleShareReceiptPdf(activeReceiptSale)}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50"
-                    title="Share receipt PDF"
+                    onClick={() => {
+                      setShareTargetSale(activeReceiptSale);
+                      setIsShareModalOpen(true);
+                    }}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                    title="Share receipt via WhatsApp, Instagram, TikTok, Facebook, etc."
                   >
-                    {isSharingPdf ? (
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                    ) : (
-                      <Share2 className="w-3 h-3" />
-                    )}
-                    <span>{isSharingPdf ? 'Sharing...' : 'Share'}</span>
+                    <Share2 className="w-3 h-3" />
+                    <span>{language === 'fr' ? 'Partager' : 'Share'}</span>
                   </button>
 
                   {/* Print */}
@@ -836,6 +929,24 @@ export const AdminPosPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Reusable Share & PDF Export Modal for POS Receipt */}
+      {isShareModalOpen && (shareTargetSale || activeReceiptSale) && (
+        <ShareDocumentModal
+          isOpen={isShareModalOpen}
+          onClose={() => {
+            setIsShareModalOpen(false);
+            setShareTargetSale(null);
+          }}
+          targetElementId="printable-receipt"
+          documentTitle={`DABIN Fashion Receipt #${(shareTargetSale || activeReceiptSale)!.receiptNumber}`}
+          documentNumber={(shareTargetSale || activeReceiptSale)!.receiptNumber}
+          fileName={`DABIN-Receipt-${(shareTargetSale || activeReceiptSale)!.receiptNumber}.pdf`}
+          summaryText={generateReceiptSummaryText(shareTargetSale || activeReceiptSale!)}
+          recipientPhone={(shareTargetSale || activeReceiptSale)!.customerPhone}
+          language={language}
+        />
+      )}
     </AdminLayout>
   );
 };

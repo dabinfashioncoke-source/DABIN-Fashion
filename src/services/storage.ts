@@ -3,6 +3,7 @@ import {
   INITIAL_COMMERCIAL_DOCUMENTS,
   INITIAL_CUSTOMERS,
   INITIAL_DESTINATIONS,
+  INITIAL_FINANCE_TRANSACTIONS,
   INITIAL_PRODUCTS,
   INITIAL_SETTINGS,
   INITIAL_SUPPLIERS,
@@ -20,6 +21,9 @@ import {
   Customer,
   DeliveryDestination,
   DocumentStatus,
+  FinanceCategory,
+  FinanceTransaction,
+  FinanceTransactionType,
   FollowUpReminder,
   InventoryAdjustmentReason,
   InventoryMovement,
@@ -50,6 +54,7 @@ const STORAGE_KEYS = {
   APP_LANGUAGE: 'dabin_fashion_lang_v1',
   APP_CURRENCY: 'dabin_fashion_currency_v1',
   COMMERCIAL_DOCUMENTS: 'dabin_fashion_documents_v1',
+  FINANCE_TRANSACTIONS: 'dabin_fashion_finance_transactions_v1',
 };
 
 class StorageService {
@@ -99,6 +104,9 @@ class StorageService {
     }
     if (!localStorage.getItem(STORAGE_KEYS.COMMERCIAL_DOCUMENTS)) {
       this.setItem(STORAGE_KEYS.COMMERCIAL_DOCUMENTS, INITIAL_COMMERCIAL_DOCUMENTS);
+    }
+    if (!localStorage.getItem(STORAGE_KEYS.FINANCE_TRANSACTIONS)) {
+      this.setItem(STORAGE_KEYS.FINANCE_TRANSACTIONS, INITIAL_FINANCE_TRANSACTIONS);
     }
     // Session is null by default; requires DABIN Staff authentication
     if (!localStorage.getItem(STORAGE_KEYS.SALES)) {
@@ -1218,6 +1226,122 @@ class StorageService {
     return convertedDoc;
   }
 
+  // --- FINANCE (INCOME & EXPENSES) ---
+  public getFinanceTransactions(): FinanceTransaction[] {
+    return this.getItem<FinanceTransaction[]>(
+      STORAGE_KEYS.FINANCE_TRANSACTIONS,
+      INITIAL_FINANCE_TRANSACTIONS
+    );
+  }
+
+  public getFinanceTransactionById(id: string): FinanceTransaction | null {
+    const list = this.getFinanceTransactions();
+    return list.find((t) => t.id === id) || null;
+  }
+
+  public saveFinanceTransaction(data: Partial<FinanceTransaction>): FinanceTransaction {
+    const list = this.getFinanceTransactions();
+    const currentUser = this.getCurrentUser();
+    const now = new Date().toISOString();
+    const isNew = !data.id;
+    const id = data.id || `tx-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+
+    const fullTx: FinanceTransaction = {
+      id,
+      type: data.type || 'expense',
+      category: data.category || 'other_income',
+      title: data.title || 'Untitled Transaction',
+      amount: Number(data.amount) || 0,
+      currency: data.currency || 'KES',
+      exchangeRateUsed: data.exchangeRateUsed || 130,
+      date: data.date || now.split('T')[0],
+      paymentMethod: data.paymentMethod || 'mpesa',
+      referenceNumber: data.referenceNumber,
+      paidToOrFrom: data.paidToOrFrom,
+      notes: data.notes,
+      status: data.status || 'completed',
+      recordedBy: data.recordedBy || currentUser?.name || 'DABIN Staff',
+      createdAt: data.createdAt || now,
+      relatedSaleId: data.relatedSaleId,
+      relatedIntakeId: data.relatedIntakeId,
+      relatedDocumentId: data.relatedDocumentId,
+    };
+
+    const existingIdx = list.findIndex((t) => t.id === id);
+    if (existingIdx >= 0) {
+      list[existingIdx] = fullTx;
+    } else {
+      list.unshift(fullTx);
+    }
+
+    this.setItem(STORAGE_KEYS.FINANCE_TRANSACTIONS, list);
+    this.logAudit(
+      isNew ? 'RECORD_FINANCE_TX' : 'UPDATE_FINANCE_TX',
+      `${fullTx.type.toUpperCase()}: ${fullTx.title} (${fullTx.currency} ${fullTx.amount.toLocaleString()})`
+    );
+
+    return fullTx;
+  }
+
+  public deleteFinanceTransaction(id: string): boolean {
+    const list = this.getFinanceTransactions();
+    const filtered = list.filter((t) => t.id !== id);
+    if (filtered.length !== list.length) {
+      this.setItem(STORAGE_KEYS.FINANCE_TRANSACTIONS, filtered);
+      this.logAudit('DELETE_FINANCE_TX', `Deleted finance transaction ID: ${id}`);
+      return true;
+    }
+    return false;
+  }
+
+  public getFinanceSummary(period: 'all' | 'today' | 'this_week' | 'this_month' = 'all') {
+    const list = this.getFinanceTransactions().filter((t) => t.status === 'completed');
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+
+    const filtered = list.filter((tx) => {
+      if (period === 'all') return true;
+      const txDate = tx.date;
+      if (period === 'today') return txDate === todayStr;
+      if (period === 'this_month') {
+        const curYearMonth = todayStr.substring(0, 7);
+        return txDate.startsWith(curYearMonth);
+      }
+      if (period === 'this_week') {
+        const d = new Date(txDate);
+        const diffDays = (now.getTime() - d.getTime()) / (1000 * 3600 * 24);
+        return diffDays >= 0 && diffDays <= 7;
+      }
+      return true;
+    });
+
+    let totalIncomeKes = 0;
+    let totalExpenseKes = 0;
+    let totalIncomeUsd = 0;
+    let totalExpenseUsd = 0;
+
+    for (const tx of filtered) {
+      const amount = Number(tx.amount) || 0;
+      if (tx.currency === 'USD') {
+        if (tx.type === 'income') totalIncomeUsd += amount;
+        else totalExpenseUsd += amount;
+      } else {
+        if (tx.type === 'income') totalIncomeKes += amount;
+        else totalExpenseKes += amount;
+      }
+    }
+
+    return {
+      totalIncomeKes,
+      totalExpenseKes,
+      netCashflowKes: totalIncomeKes - totalExpenseKes,
+      totalIncomeUsd,
+      totalExpenseUsd,
+      netCashflowUsd: totalIncomeUsd - totalExpenseUsd,
+      transactionCount: filtered.length,
+    };
+  }
+
   // --- DATABASE JSON BACKUP / RESTORE ---
   public exportFullDatabase(): string {
     const fullBackup = {
@@ -1236,6 +1360,7 @@ class StorageService {
       reminders: this.getReminders(),
       auditLogs: this.getAuditLogs(),
       commercialDocuments: this.getCommercialDocuments(),
+      financeTransactions: this.getFinanceTransactions(),
     };
     return JSON.stringify(fullBackup, null, 2);
   }
@@ -1255,6 +1380,7 @@ class StorageService {
       if (data.destinations) this.setItem(STORAGE_KEYS.DESTINATIONS, data.destinations);
       if (data.settings) this.setItem(STORAGE_KEYS.SETTINGS, data.settings);
       if (data.commercialDocuments) this.setItem(STORAGE_KEYS.COMMERCIAL_DOCUMENTS, data.commercialDocuments);
+      if (data.financeTransactions) this.setItem(STORAGE_KEYS.FINANCE_TRANSACTIONS, data.financeTransactions);
 
       this.logAudit('RESTORE_DATABASE', 'Database successfully restored from JSON backup file.');
       return true;

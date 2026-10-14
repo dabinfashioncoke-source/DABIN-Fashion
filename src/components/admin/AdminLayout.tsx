@@ -15,6 +15,7 @@ import {
   X,
   Globe,
   FileText,
+  ArrowDownUp,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { DabinLogo } from '../common/DabinLogo';
@@ -106,6 +107,13 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, activeTab })
       icon: FileText,
       route: '/admin/documents',
       allowedRoles: ['owner', 'admin', 'cashier'],
+    },
+    {
+      id: 'finance',
+      label: t.admin.finance || (language === 'fr' ? 'Revenus & Dépenses' : 'Income & Expenses'),
+      icon: ArrowDownUp,
+      route: '/admin/finance',
+      allowedRoles: ['owner', 'admin'],
     },
     {
       id: 'intake',

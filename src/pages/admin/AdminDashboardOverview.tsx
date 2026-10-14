@@ -12,6 +12,7 @@ import {
   TrendingUp,
   Truck,
   Users,
+  ArrowDownUp,
 } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
 import { AdminLayout } from '../../components/admin/AdminLayout';
@@ -160,6 +161,14 @@ export const AdminDashboardOverview: React.FC = () => {
             >
               <FileText className="w-4 h-4 text-[#7B173B]" />
               <span>{language === 'fr' ? 'Devis & Factures' : 'Quotations & Invoices'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => navigateTo('/admin/finance')}
+              className="inline-flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 text-xs font-medium rounded-xl shadow-2xs"
+            >
+              <ArrowDownUp className="w-4 h-4 text-emerald-600" />
+              <span>{language === 'fr' ? 'Revenus & Dépenses' : 'Income & Expenses'}</span>
             </button>
           </div>
         </div>

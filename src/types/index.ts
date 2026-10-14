@@ -362,3 +362,45 @@ export interface CommercialDocument {
   updatedAt: string;
   createdBy: string;
 }
+
+export type FinanceTransactionType = 'income' | 'expense';
+
+export type FinanceCategory =
+  | 'pos_sales'
+  | 'wholesale_order'
+  | 'cargo_shipping_income'
+  | 'tailoring_services'
+  | 'client_deposit'
+  | 'other_income'
+  | 'inventory_purchase'
+  | 'freight_shipping'
+  | 'customs_clearance'
+  | 'rent_utilities'
+  | 'salaries_commissions'
+  | 'packaging_materials'
+  | 'marketing_advertising'
+  | 'financial_fees'
+  | 'equipment_repairs'
+  | 'taxes_licenses'
+  | 'miscellaneous_expense';
+
+export interface FinanceTransaction {
+  id: string;
+  type: FinanceTransactionType;
+  category: FinanceCategory | string;
+  title: string;
+  amount: number;
+  currency: CurrencyCode;
+  exchangeRateUsed: number;
+  date: string;
+  paymentMethod: PaymentMethod | string;
+  referenceNumber?: string;
+  paidToOrFrom?: string;
+  notes?: string;
+  status: 'completed' | 'pending' | 'cancelled';
+  recordedBy: string;
+  createdAt: string;
+  relatedSaleId?: string;
+  relatedIntakeId?: string;
+  relatedDocumentId?: string;
+}

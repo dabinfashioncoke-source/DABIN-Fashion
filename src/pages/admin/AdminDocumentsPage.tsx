@@ -46,6 +46,7 @@ import {
 } from '../../types';
 import { OFFICIAL_BUSINESS_INFO } from '../../constants/initialData';
 import { downloadPdfFromElement, sharePdfFromElement } from '../../utils/pdfGenerator';
+import { ShareDocumentModal } from '../../components/admin/ShareDocumentModal';
 
 export const AdminDocumentsPage: React.FC = () => {
   const { language, currentUser } = useApp();
@@ -67,6 +68,10 @@ export const AdminDocumentsPage: React.FC = () => {
   const [isSharingPdf, setIsSharingPdf] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [activeShareDocId, setActiveShareDocId] = useState<string | null>(null);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [shareTargetDoc, setShareTargetDoc] = useState<CommercialDocument | null>(null);
+  const [autoSendToClient, setAutoSendToClient] = useState(true);
+  const [autoSendChannel, setAutoSendChannel] = useState<'whatsapp' | 'email' | 'both'>('whatsapp');
 
   // Form State for creating/editing document
   const initialFormState: Partial<CommercialDocument> & {
@@ -357,8 +362,8 @@ export const AdminDocumentsPage: React.FC = () => {
     setIsEditorOpen(true);
   };
 
-  // Save Document
-  const handleSaveDocument = (andPreview = false) => {
+  // Save Document (with optional auto-send to client via WhatsApp / Email)
+  const handleSaveDocument = (andPreview = false, sendDirectToClient = false) => {
     if (!formData.clientName?.trim()) {
       alert(language === 'fr' ? 'Veuillez saisir le nom du client.' : 'Please enter the client name.');
       return;
@@ -367,6 +372,34 @@ export const AdminDocumentsPage: React.FC = () => {
     if (formData.items.length === 0 || !formData.items[0].description) {
       alert(language === 'fr' ? 'Veuillez ajouter au moins un article avec sa description.' : 'Please add at least one item with a description.');
       return;
+    }
+
+    const shouldSend = sendDirectToClient || autoSendToClient;
+
+    // Check if contact info exists when sending
+    if (shouldSend) {
+      if (
+        (autoSendChannel === 'whatsapp' || autoSendChannel === 'both') &&
+        !formData.clientPhone?.trim()
+      ) {
+        alert(
+          language === 'fr'
+            ? 'Veuillez renseigner le numéro de téléphone / WhatsApp du client pour l’envoi automatique.'
+            : 'Please enter the client phone / WhatsApp number for automated sending.'
+        );
+        return;
+      }
+      if (
+        autoSendChannel === 'email' &&
+        !formData.clientEmail?.trim()
+      ) {
+        alert(
+          language === 'fr'
+            ? 'Veuillez renseigner l’adresse e-mail du client pour l’envoi automatique.'
+            : 'Please enter the client email address for automated sending.'
+        );
+        return;
+      }
     }
 
     const calc = calculateTotals(
@@ -378,8 +411,16 @@ export const AdminDocumentsPage: React.FC = () => {
       formData.amountPaid || 0
     );
 
+    const docStatus: DocumentStatus =
+      formData.type === 'receipt'
+        ? 'paid'
+        : shouldSend
+        ? 'sent'
+        : formData.status || 'draft';
+
     const saved = storage.saveCommercialDocument({
       ...formData,
+      status: docStatus,
       subtotal: calc.subtotal,
       discountAmount: calc.discountAmount,
       taxAmount: calc.taxAmount,
@@ -389,6 +430,46 @@ export const AdminDocumentsPage: React.FC = () => {
 
     refreshDocuments();
     setIsEditorOpen(false);
+
+    if (shouldSend) {
+      const summary = generateDocumentSummary(saved);
+
+      // 1. WhatsApp Delivery
+      if (
+        (autoSendChannel === 'whatsapp' || autoSendChannel === 'both') &&
+        saved.clientPhone
+      ) {
+        const cleanPhone = saved.clientPhone.replace(/[^0-9]/g, '');
+        const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(summary)}`;
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
+
+      // 2. Email Delivery
+      if (
+        (autoSendChannel === 'email' || autoSendChannel === 'both') &&
+        saved.clientEmail
+      ) {
+        const subject = `DABIN Fashion House - ${saved.type.toUpperCase()} #${saved.documentNumber}`;
+        const mailto = `mailto:${encodeURIComponent(saved.clientEmail)}?subject=${encodeURIComponent(
+          subject
+        )}&body=${encodeURIComponent(summary)}`;
+        window.location.href = mailto;
+      }
+
+      setToastMessage(
+        language === 'fr'
+          ? `✓ Document #${saved.documentNumber} enregistré et transmis automatiquement à ${saved.clientName} !`
+          : `✓ Document #${saved.documentNumber} saved & dispatched automatically to ${saved.clientName}!`
+      );
+      setTimeout(() => setToastMessage(null), 4500);
+    } else {
+      setToastMessage(
+        language === 'fr'
+          ? `✓ Document #${saved.documentNumber} enregistré avec succès !`
+          : `✓ Document #${saved.documentNumber} saved successfully!`
+      );
+      setTimeout(() => setToastMessage(null), 3500);
+    }
 
     if (andPreview) {
       setActiveDocument(saved);
@@ -1111,65 +1192,23 @@ Thank you for choosing DABIN Fashion! Nairobi, Kenya.`;
                               <Download className="w-3.5 h-3.5" />
                             </button>
 
-                            {/* Share Menu / Popover */}
-                            <div className="relative">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setActiveShareDocId(activeShareDocId === doc.id ? null : doc.id);
-                                }}
-                                className="p-1.5 bg-gray-100 hover:bg-blue-600 hover:text-white text-gray-700 rounded-lg transition-colors cursor-pointer"
-                                title={language === 'fr' ? 'Partager le document' : 'Share document'}
-                              >
-                                <Share2 className="w-3.5 h-3.5" />
-                              </button>
-                              {activeShareDocId === doc.id && (
-                                <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-xl border border-gray-200 py-1.5 z-40 text-left text-xs">
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setActiveShareDocId(null);
-                                      setActiveDocument(doc);
-                                      setIsPreviewOpen(true);
-                                      setTimeout(() => handleSharePdf(doc), 300);
-                                    }}
-                                    className="w-full px-3 py-1.5 hover:bg-gray-50 flex items-center gap-2 text-gray-700 cursor-pointer font-medium"
-                                  >
-                                    <Share2 className="w-3.5 h-3.5 text-blue-600" />
-                                    <span>{language === 'fr' ? 'Partager PDF' : 'Share PDF File'}</span>
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleOpenWhatsApp(doc)}
-                                    className="w-full px-3 py-1.5 hover:bg-gray-50 flex items-center gap-2 text-gray-700 cursor-pointer font-medium"
-                                  >
-                                    <Send className="w-3.5 h-3.5 text-emerald-600" />
-                                    <span>WhatsApp</span>
-                                  </button>
-                                  {doc.clientEmail && (
-                                    <button
-                                      type="button"
-                                      onClick={() => handleOpenEmail(doc)}
-                                      className="w-full px-3 py-1.5 hover:bg-gray-50 flex items-center gap-2 text-gray-700 cursor-pointer font-medium"
-                                    >
-                                      <Mail className="w-3.5 h-3.5 text-slate-600" />
-                                      <span>Email</span>
-                                    </button>
-                                  )}
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      copyWhatsAppSummary(doc);
-                                      setActiveShareDocId(null);
-                                    }}
-                                    className="w-full px-3 py-1.5 hover:bg-gray-50 flex items-center gap-2 text-gray-700 cursor-pointer font-medium"
-                                  >
-                                    <Copy className="w-3.5 h-3.5 text-gray-500" />
-                                    <span>{language === 'fr' ? 'Copier le texte' : 'Copy Text'}</span>
-                                  </button>
-                                </div>
-                              )}
-                            </div>
+                            {/* Share to All Platforms & PDF */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveDocument(doc);
+                                setShareTargetDoc(doc);
+                                setIsShareModalOpen(true);
+                              }}
+                              className="p-1.5 bg-gray-100 hover:bg-blue-600 hover:text-white text-gray-700 rounded-lg transition-colors cursor-pointer"
+                              title={
+                                language === 'fr'
+                                  ? 'Partager (WhatsApp, Instagram, TikTok, Facebook, PDF)'
+                                  : 'Share (WhatsApp, Instagram, TikTok, Facebook, PDF)'
+                              }
+                            >
+                              <Share2 className="w-3.5 h-3.5" />
+                            </button>
 
                             {/* Edit Document */}
                             <button
@@ -2192,13 +2231,13 @@ Thank you for choosing DABIN Fashion! Nairobi, Kenya.`;
               </div>
 
               {/* Digital Stamp & Signatory Checkbox */}
-              <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 flex items-center justify-between">
+              <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 flex flex-wrap items-center justify-between gap-3">
                 <label className="flex items-center gap-2 cursor-pointer font-medium text-gray-700 text-xs">
                   <input
                     type="checkbox"
                     checked={formData.includeDigitalStamp}
                     onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, includeDigitalStamp: e.target.checked }))
+                    setFormData((prev) => ({ ...prev, includeDigitalStamp: e.target.checked }))
                     }
                     className="rounded text-[#7B173B]"
                   />
@@ -2220,6 +2259,104 @@ Thank you for choosing DABIN Fashion! Nairobi, Kenya.`;
                   />
                 </div>
               </div>
+
+              {/* AUTOMATED CLIENT DELIVERY UPON COMPLETION (WHATSAPP / EMAIL) */}
+              <div className="p-4 bg-gradient-to-r from-emerald-50 to-blue-50 rounded-2xl border border-emerald-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={autoSendToClient}
+                      onChange={(e) => setAutoSendToClient(e.target.checked)}
+                      className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500"
+                    />
+                    <span className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
+                      <Send className="w-3.5 h-3.5 text-emerald-600" />
+                      {language === 'fr'
+                        ? 'Transmettre automatiquement au client dès validation'
+                        : 'Send automatically to client once filling is complete'}
+                    </span>
+                  </label>
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                    {language === 'fr' ? 'Auto-Envoi Activé' : 'Instant Dispatch'}
+                  </span>
+                </div>
+
+                {autoSendToClient && (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 text-xs">
+                    {/* WhatsApp */}
+                    <label
+                      className={`p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition-all ${
+                        autoSendChannel === 'whatsapp'
+                          ? 'bg-white border-emerald-500 shadow-xs'
+                          : 'bg-white/60 border-gray-200 hover:bg-white'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="autoSendChannel"
+                        checked={autoSendChannel === 'whatsapp'}
+                        onChange={() => setAutoSendChannel('whatsapp')}
+                        className="text-emerald-600"
+                      />
+                      <div className="min-w-0">
+                        <span className="font-bold block text-gray-800">WhatsApp</span>
+                        <span className="text-[10px] text-gray-500 block truncate">
+                          {formData.clientPhone || (language === 'fr' ? 'Tél non renseigné' : 'No phone entered')}
+                        </span>
+                      </div>
+                    </label>
+
+                    {/* Email */}
+                    <label
+                      className={`p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition-all ${
+                        autoSendChannel === 'email'
+                          ? 'bg-white border-blue-500 shadow-xs'
+                          : 'bg-white/60 border-gray-200 hover:bg-white'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="autoSendChannel"
+                        checked={autoSendChannel === 'email'}
+                        onChange={() => setAutoSendChannel('email')}
+                        className="text-blue-600"
+                      />
+                      <div className="min-w-0">
+                        <span className="font-bold block text-gray-800">E-mail</span>
+                        <span className="text-[10px] text-gray-500 block truncate">
+                          {formData.clientEmail || (language === 'fr' ? 'Email non renseigné' : 'No email entered')}
+                        </span>
+                      </div>
+                    </label>
+
+                    {/* Both */}
+                    <label
+                      className={`p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition-all ${
+                        autoSendChannel === 'both'
+                          ? 'bg-white border-purple-500 shadow-xs'
+                          : 'bg-white/60 border-gray-200 hover:bg-white'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="autoSendChannel"
+                        checked={autoSendChannel === 'both'}
+                        onChange={() => setAutoSendChannel('both')}
+                        className="text-purple-600"
+                      />
+                      <div className="min-w-0">
+                        <span className="font-bold block text-gray-800">
+                          {language === 'fr' ? 'WhatsApp & Email' : 'Both Channels'}
+                        </span>
+                        <span className="text-[10px] text-gray-500 block">
+                          {language === 'fr' ? 'Double transmission' : 'Simultaneous send'}
+                        </span>
+                      </div>
+                    </label>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Modal Actions Footer */}
@@ -2232,17 +2369,33 @@ Thank you for choosing DABIN Fashion! Nairobi, Kenya.`;
                 {language === 'fr' ? 'Annuler' : 'Cancel'}
               </button>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Save only */}
                 <button
                   type="button"
-                  onClick={() => handleSaveDocument(false)}
+                  onClick={() => handleSaveDocument(false, false)}
                   className="px-4 py-2.5 bg-gray-900 hover:bg-black text-white font-semibold rounded-xl cursor-pointer"
                 >
                   {language === 'fr' ? 'Enregistrer le Document' : 'Save Document'}
                 </button>
+
+                {/* Save & Send to Client */}
                 <button
                   type="button"
-                  onClick={() => handleSaveDocument(true)}
+                  onClick={() => handleSaveDocument(false, true)}
+                  className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl cursor-pointer shadow-xs transition-colors"
+                  title="Save and automatically send document to client"
+                >
+                  <Send className="w-4 h-4" />
+                  <span>
+                    {language === 'fr' ? 'Enregistrer & Envoyer au Client' : 'Save & Send to Client'}
+                  </span>
+                </button>
+
+                {/* Save & Print */}
+                <button
+                  type="button"
+                  onClick={() => handleSaveDocument(true, false)}
                   className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-[#7B173B] hover:bg-[#62122F] text-white font-semibold rounded-xl cursor-pointer shadow-xs"
                 >
                   <Printer className="w-4 h-4" />
@@ -2302,28 +2455,18 @@ Thank you for choosing DABIN Fashion! Nairobi, Kenya.`;
                   </span>
                 </button>
 
-                {/* 2. Share PDF File (Native Share API with PDF attached) */}
+                {/* 2. Share to Social Platforms & Apps (WhatsApp, Instagram, TikTok, Facebook, Email, etc.) */}
                 <button
                   type="button"
-                  disabled={isSharingPdf}
-                  onClick={() => handleSharePdf(activeDocument)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold cursor-pointer transition-all disabled:opacity-50"
-                  title={language === 'fr' ? 'Partager le fichier PDF' : 'Share PDF document file'}
+                  onClick={() => {
+                    setShareTargetDoc(activeDocument);
+                    setIsShareModalOpen(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold cursor-pointer transition-all shadow-xs"
+                  title={language === 'fr' ? 'Partager (WhatsApp, Instagram, TikTok, Facebook, etc.)' : 'Share (WhatsApp, Instagram, TikTok, Facebook, etc.)'}
                 >
-                  {isSharingPdf ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <Share2 className="w-3.5 h-3.5" />
-                  )}
-                  <span>
-                    {isSharingPdf
-                      ? language === 'fr'
-                        ? 'Envoi...'
-                        : 'Sharing...'
-                      : language === 'fr'
-                      ? 'Partager PDF'
-                      : 'Share PDF'}
-                  </span>
+                  <Share2 className="w-3.5 h-3.5" />
+                  <span>{language === 'fr' ? 'Partager & Réseaux' : 'Share & Socials'}</span>
                 </button>
 
                 {/* 3. Send via WhatsApp */}
@@ -2744,6 +2887,37 @@ Thank you for choosing DABIN Fashion! Nairobi, Kenya.`;
             </div>
           </div>
         </div>
+      )}
+
+      {/* Reusable Share & PDF Export Modal */}
+      {isShareModalOpen && (shareTargetDoc || activeDocument) && (
+        <ShareDocumentModal
+          isOpen={isShareModalOpen}
+          onClose={() => {
+            setIsShareModalOpen(false);
+            setShareTargetDoc(null);
+          }}
+          targetElementId="printable-document"
+          documentTitle={`DABIN Fashion - ${(shareTargetDoc || activeDocument)!.type.toUpperCase()} #${
+            (shareTargetDoc || activeDocument)!.documentNumber
+          }`}
+          documentNumber={(shareTargetDoc || activeDocument)!.documentNumber}
+          fileName={`DABIN-${(shareTargetDoc || activeDocument)!.type.toUpperCase()}-${
+            (shareTargetDoc || activeDocument)!.documentNumber
+          }.pdf`}
+          summaryText={generateDocumentSummary(shareTargetDoc || activeDocument!)}
+          recipientPhone={(shareTargetDoc || activeDocument)!.clientPhone}
+          recipientEmail={(shareTargetDoc || activeDocument)!.clientEmail}
+          language={language}
+          onSent={(channel) => {
+            setToastMessage(
+              language === 'fr'
+                ? `✓ Document transmis via ${channel} !`
+                : `✓ Document shared via ${channel}!`
+            );
+            setTimeout(() => setToastMessage(null), 3500);
+          }}
+        />
       )}
     </AdminLayout>
   );
