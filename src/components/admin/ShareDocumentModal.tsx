@@ -13,6 +13,7 @@ import {
   Smartphone,
 } from 'lucide-react';
 import { downloadPdfFromElement, sharePdfFromElement } from '../../utils/pdfGenerator';
+import { safeOpenUrl } from '../../utils/navigation';
 
 export interface ShareDocumentModalProps {
   isOpen: boolean;
@@ -113,7 +114,7 @@ export const ShareDocumentModal: React.FC<ShareDocumentModalProps> = ({
     const url = cleanedPhone
       ? `https://wa.me/${cleanedPhone}?text=${encodedText}`
       : `https://wa.me/?text=${encodedText}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
+    safeOpenUrl(url);
     showFeedback(language === 'fr' ? '✓ WhatsApp ouvert !' : '✓ WhatsApp opened!');
     onSent?.('whatsapp');
   };
@@ -137,7 +138,7 @@ export const ShareDocumentModal: React.FC<ShareDocumentModalProps> = ({
     const url = `https://www.facebook.com/sharer/sharer.php?quote=${quote}&u=${encodeURIComponent(
       window.location.origin
     )}`;
-    window.open(url, '_blank', 'noopener,noreferrer,width=600,height=500');
+    safeOpenUrl(url);
     showFeedback(language === 'fr' ? '✓ Facebook ouvert !' : '✓ Facebook opened!');
     onSent?.('facebook');
   };
@@ -160,7 +161,7 @@ export const ShareDocumentModal: React.FC<ShareDocumentModalProps> = ({
       }
     }
     // Open Instagram Web/App
-    window.open('https://www.instagram.com/direct/inbox/', '_blank', 'noopener,noreferrer');
+    safeOpenUrl('https://www.instagram.com/direct/inbox/');
     showFeedback(
       language === 'fr'
         ? '✓ PDF téléchargé & texte copié pour Instagram Direct !'
@@ -184,7 +185,7 @@ export const ShareDocumentModal: React.FC<ShareDocumentModalProps> = ({
         // ignore
       }
     }
-    window.open('https://www.tiktok.com/messages', '_blank', 'noopener,noreferrer');
+    safeOpenUrl('https://www.tiktok.com/messages');
     showFeedback(
       language === 'fr'
         ? '✓ PDF téléchargé & texte copié pour TikTok Messages !'

@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { storage } from '../services/storage';
+import { safeOpenUrl } from '../utils/navigation';
 import { OFFICIAL_BUSINESS_INFO } from '../constants/initialData';
 import { DabinLogo } from '../components/common/DabinLogo';
 
@@ -22,7 +23,7 @@ export const AboutPage: React.FC = () => {
 
   const handleWhatsAppInquiry = () => {
     const link = storage.getWhatsAppLink(t.whatsapp.generalGreeting);
-    window.open(link, '_blank', 'noopener,noreferrer');
+    safeOpenUrl(link);
   };
 
   const primarySloganFr = settings.primarySloganFr || OFFICIAL_BUSINESS_INFO.primarySloganFr;
@@ -202,10 +203,10 @@ export const AboutPage: React.FC = () => {
             <div>
               <span className="text-gray-400 block font-medium">E-mail</span>
               <a
-                href={`mailto:${OFFICIAL_BUSINESS_INFO.email}`}
+                href={`mailto:${settings.contactEmail || OFFICIAL_BUSINESS_INFO.email}`}
                 className="font-semibold text-gray-900 hover:underline"
               >
-                {OFFICIAL_BUSINESS_INFO.email}
+                {settings.contactEmail || OFFICIAL_BUSINESS_INFO.email}
               </a>
             </div>
           </div>
@@ -220,7 +221,7 @@ export const AboutPage: React.FC = () => {
                 rel="noreferrer"
                 className="font-semibold text-gray-900 hover:underline"
               >
-                {OFFICIAL_BUSINESS_INFO.whatsappFormatted}
+                {settings.whatsappNumber || OFFICIAL_BUSINESS_INFO.whatsappFormatted}
               </a>
             </div>
           </div>
@@ -232,7 +233,7 @@ export const AboutPage: React.FC = () => {
                 {language === 'fr' ? 'Siège des activités' : 'Based In'}
               </span>
               <span className="font-semibold text-gray-900">
-                {OFFICIAL_BUSINESS_INFO.location}
+                {settings.businessLocation || OFFICIAL_BUSINESS_INFO.location}
               </span>
             </div>
           </div>

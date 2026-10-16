@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Truck, MessageCircle, MapPin, ArrowRight, ShieldAlert } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { storage } from '../../services/storage';
+import { safeOpenUrl } from '../../utils/navigation';
 
 export const DeliveryDestinationsSection: React.FC = () => {
   const { language, t, navigateTo, destinations: allDestinations } = useApp();
@@ -16,7 +17,7 @@ export const DeliveryDestinationsSection: React.FC = () => {
   const handleAskCityRates = (city: string, country: string) => {
     const msg = storage.generateDestinationInquiryMessage(city, country, language);
     const link = storage.getWhatsAppLink(msg);
-    window.open(link, '_blank', 'noopener,noreferrer');
+    safeOpenUrl(link);
   };
 
   return (

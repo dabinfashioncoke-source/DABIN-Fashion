@@ -139,8 +139,10 @@ export const AdminSettingsPage: React.FC = () => {
     setFormSettings(storage.getSettings());
     setDestinations(storage.getDestinations());
     setCategoriesList(storage.getCategories());
-    alert('Factory data restored.');
-    window.location.reload();
+    setFeedback(language === 'fr' ? 'Données d’usine restaurées avec succès.' : 'Factory data restored successfully.');
+    setTimeout(() => {
+      window.location.reload();
+    }, 1200);
   };
 
   // --- DESTINATIONS MANAGEMENT ---
@@ -203,7 +205,8 @@ export const AdminSettingsPage: React.FC = () => {
   const handleSaveCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingCat || !editingCat.nameEn?.trim() || !editingCat.nameFr?.trim()) {
-      alert(language === 'fr' ? 'Veuillez saisir les noms en français et en anglais.' : 'Please enter English and French names.');
+      setFeedback(language === 'fr' ? 'Veuillez saisir les noms en français et en anglais.' : 'Please enter English and French names.');
+      setTimeout(() => setFeedback(null), 3500);
       return;
     }
 

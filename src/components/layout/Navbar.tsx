@@ -12,6 +12,7 @@ import { OFFICIAL_BUSINESS_INFO } from '../../constants/initialData';
 import { useApp } from '../../context/AppContext';
 import { storage } from '../../services/storage';
 import { DabinLogo } from '../common/DabinLogo';
+import { safeOpenUrl } from '../../utils/navigation';
 
 export const Navbar: React.FC = () => {
   const {
@@ -41,7 +42,7 @@ export const Navbar: React.FC = () => {
 
   const handleWhatsAppGeneralClick = () => {
     const url = storage.getWhatsAppLink(t.whatsapp.generalGreeting);
-    window.open(url, '_blank', 'noopener,noreferrer');
+    safeOpenUrl(url);
   };
 
   const showAnnouncement = settings.showAnnouncementBar ?? true;

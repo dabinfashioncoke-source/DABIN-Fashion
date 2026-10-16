@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { storage } from '../services/storage';
+import { safeOpenUrl } from '../utils/navigation';
 
 export const DestinationsPage: React.FC = () => {
   const { language, t, destinations: allDestinations } = useApp();
@@ -39,13 +40,13 @@ export const DestinationsPage: React.FC = () => {
     }
 
     const link = storage.getWhatsAppLink(baseMsg);
-    window.open(link, '_blank', 'noopener,noreferrer');
+    safeOpenUrl(link);
   };
 
   const handleDirectCityClick = (city: string, country: string) => {
     const msg = storage.generateDestinationInquiryMessage(city, country, language);
     const link = storage.getWhatsAppLink(msg);
-    window.open(link, '_blank', 'noopener,noreferrer');
+    safeOpenUrl(link);
   };
 
   return (

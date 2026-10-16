@@ -4,13 +4,14 @@ import { useApp } from '../../context/AppContext';
 import { DabinLogo } from '../common/DabinLogo';
 import { OFFICIAL_BUSINESS_INFO } from '../../constants/initialData';
 import { storage } from '../../services/storage';
+import { safeOpenUrl } from '../../utils/navigation';
 
 export const Footer: React.FC = () => {
   const { language, setLanguage, t, navigateTo, currentUser, settings, destinations } = useApp();
 
   const handleWhatsAppClick = () => {
     const url = storage.getWhatsAppLink(t.whatsapp.generalGreeting);
-    window.open(url, '_blank', 'noopener,noreferrer');
+    safeOpenUrl(url);
   };
 
   const drcCities = destinations.filter((d) => d.country === 'DR Congo' && d.active);

@@ -220,7 +220,10 @@ export const AdminProductsPage: React.FC = () => {
     if (!editingProduct) return;
 
     if (!editingProduct.nameEn?.trim() || !editingProduct.nameFr?.trim()) {
-      alert(language === 'fr' ? 'Veuillez saisir le nom en anglais et en français.' : 'Please enter names in both languages.');
+      setFeedbackMsg({
+        type: 'error',
+        text: language === 'fr' ? 'Veuillez saisir le nom en anglais et en français.' : 'Please enter names in both languages.',
+      });
       return;
     }
 

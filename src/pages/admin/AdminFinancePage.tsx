@@ -145,11 +145,11 @@ export const AdminFinancePage: React.FC = () => {
     e.preventDefault();
     const amountNum = parseFloat(formAmount);
     if (isNaN(amountNum) || amountNum <= 0) {
-      alert(language === 'fr' ? 'Veuillez saisir un montant valide supérieur à 0.' : 'Please enter a valid amount greater than 0.');
+      showToast(language === 'fr' ? 'Veuillez saisir un montant valide supérieur à 0.' : 'Please enter a valid amount greater than 0.');
       return;
     }
     if (!formTitle.trim()) {
-      alert(language === 'fr' ? 'Veuillez saisir un libellé / titre.' : 'Please enter a transaction title / description.');
+      showToast(language === 'fr' ? 'Veuillez saisir un libellé / titre.' : 'Please enter a transaction title / description.');
       return;
     }
 

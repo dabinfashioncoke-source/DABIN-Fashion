@@ -36,6 +36,7 @@ import { AdminLayout } from '../../components/admin/AdminLayout';
 import { DabinLogo } from '../../components/common/DabinLogo';
 import { useApp } from '../../context/AppContext';
 import { storage } from '../../services/storage';
+import { safeOpenUrl } from '../../utils/navigation';
 import {
   CommercialDocument,
   CommercialDocumentItem,
@@ -365,12 +366,14 @@ export const AdminDocumentsPage: React.FC = () => {
   // Save Document (with optional auto-send to client via WhatsApp / Email)
   const handleSaveDocument = (andPreview = false, sendDirectToClient = false) => {
     if (!formData.clientName?.trim()) {
-      alert(language === 'fr' ? 'Veuillez saisir le nom du client.' : 'Please enter the client name.');
+      setToastMessage(language === 'fr' ? 'Veuillez saisir le nom du client.' : 'Please enter the client name.');
+      setTimeout(() => setToastMessage(null), 3500);
       return;
     }
 
     if (formData.items.length === 0 || !formData.items[0].description) {
-      alert(language === 'fr' ? 'Veuillez ajouter au moins un article avec sa description.' : 'Please add at least one item with a description.');
+      setToastMessage(language === 'fr' ? 'Veuillez ajouter au moins un article avec sa description.' : 'Please add at least one item with a description.');
+      setTimeout(() => setToastMessage(null), 3500);
       return;
     }
 
@@ -382,22 +385,24 @@ export const AdminDocumentsPage: React.FC = () => {
         (autoSendChannel === 'whatsapp' || autoSendChannel === 'both') &&
         !formData.clientPhone?.trim()
       ) {
-        alert(
+        setToastMessage(
           language === 'fr'
             ? 'Veuillez renseigner le numéro de téléphone / WhatsApp du client pour l’envoi automatique.'
             : 'Please enter the client phone / WhatsApp number for automated sending.'
         );
+        setTimeout(() => setToastMessage(null), 4000);
         return;
       }
       if (
         autoSendChannel === 'email' &&
         !formData.clientEmail?.trim()
       ) {
-        alert(
+        setToastMessage(
           language === 'fr'
             ? 'Veuillez renseigner l’adresse e-mail du client pour l’envoi automatique.'
             : 'Please enter the client email address for automated sending.'
         );
+        setTimeout(() => setToastMessage(null), 4000);
         return;
       }
     }
@@ -441,7 +446,7 @@ export const AdminDocumentsPage: React.FC = () => {
       ) {
         const cleanPhone = saved.clientPhone.replace(/[^0-9]/g, '');
         const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(summary)}`;
-        window.open(url, '_blank', 'noopener,noreferrer');
+        safeOpenUrl(url);
       }
 
       // 2. Email Delivery
@@ -708,7 +713,7 @@ Thank you for choosing DABIN Fashion! Nairobi, Kenya.`;
     const url = cleanPhone
       ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(summary)}`
       : `https://wa.me/?text=${encodeURIComponent(summary)}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
+    safeOpenUrl(url);
     setActiveShareDocId(null);
   };
 

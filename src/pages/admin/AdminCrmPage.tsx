@@ -21,6 +21,7 @@ import {
 import { AdminLayout } from '../../components/admin/AdminLayout';
 import { useApp } from '../../context/AppContext';
 import { storage } from '../../services/storage';
+import { safeOpenUrl } from '../../utils/navigation';
 import {
   CrmActivity,
   Customer,
@@ -164,7 +165,7 @@ export const AdminCrmPage: React.FC = () => {
         ? `Bonjour ${c.fullName}, l’équipe DABIN Fashion de Nairobi vous contacte concernant votre commande ou vos sélections mode.`
         : `Hello ${c.fullName}, DABIN Fashion Nairobi team is reaching out regarding your inquiry or order.`;
     const url = `https://wa.me/${rawNumber}?text=${encodeURIComponent(greeting)}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
+    safeOpenUrl(url);
   };
 
   // Activities and sales for active customer

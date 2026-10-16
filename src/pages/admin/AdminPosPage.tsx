@@ -23,6 +23,7 @@ import {
 import { AdminLayout } from '../../components/admin/AdminLayout';
 import { useApp } from '../../context/AppContext';
 import { storage } from '../../services/storage';
+import { safeOpenUrl } from '../../utils/navigation';
 import { downloadPdfFromElement, sharePdfFromElement } from '../../utils/pdfGenerator';
 import {
   CurrencyCode,
@@ -270,7 +271,7 @@ export const AdminPosPage: React.FC = () => {
         const summary = generateReceiptSummaryText(recordedSale);
         const cleanPhone = recordedSale.customerPhone.replace(/[^0-9]/g, '');
         const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(summary)}`;
-        window.open(url, '_blank', 'noopener,noreferrer');
+        safeOpenUrl(url);
       }
 
       setActiveReceiptSale(recordedSale);
@@ -289,20 +290,24 @@ export const AdminPosPage: React.FC = () => {
 
   // Handle Refund
   const handleRefund = (saleId: string) => {
-    const reason = prompt(
-      language === 'fr'
-        ? 'Raison du remboursement / retour :'
-        : 'Reason for refund / return:'
-    );
-    if (!reason) return;
+    let reason = language === 'fr' ? 'Retour article / accord client' : 'Item return / customer agreement';
+    try {
+      const input = window.prompt(
+        language === 'fr'
+          ? 'Raison du remboursement / retour :'
+          : 'Reason for refund / return:',
+        reason
+      );
+      if (input === null) return; // user cancelled
+      if (input.trim()) reason = input.trim();
+    } catch {
+      // prompt blocked by sandbox
+    }
 
     const res = storage.refundSale(saleId, reason);
-    if (res.success) {
-      setSalesList(storage.getSales());
-      alert(res.message);
-    } else {
-      alert(res.message);
-    }
+    setSalesList(storage.getSales());
+    setErrorMessage(res.message);
+    setTimeout(() => setErrorMessage(''), 4500);
   };
 
   return (

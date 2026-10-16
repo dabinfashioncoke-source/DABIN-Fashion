@@ -12,6 +12,7 @@ import {
 import { useApp } from '../context/AppContext';
 import { OFFICIAL_BUSINESS_INFO } from '../constants/initialData';
 import { storage } from '../services/storage';
+import { safeOpenUrl } from '../utils/navigation';
 
 export const ContactPage: React.FC = () => {
   const { language, t, settings } = useApp();
@@ -47,7 +48,7 @@ export const ContactPage: React.FC = () => {
 
   const handleWhatsAppDirect = () => {
     const link = storage.getWhatsAppLink(t.whatsapp.generalGreeting);
-    window.open(link, '_blank', 'noopener,noreferrer');
+    safeOpenUrl(link);
   };
 
   return (

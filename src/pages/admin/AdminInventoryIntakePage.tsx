@@ -67,7 +67,8 @@ export const AdminInventoryIntakePage: React.FC = () => {
     const prod = products.find((p) => p.id === selectedProductId);
 
     if (!sup || !prod) {
-      alert('Please select both a valid supplier and product.');
+      setFeedback(language === 'fr' ? 'Veuillez sélectionner un fournisseur et un produit valides.' : 'Please select both a valid supplier and product.');
+      setTimeout(() => setFeedback(null), 3500);
       return;
     }
 

@@ -16,6 +16,7 @@ import {
 import { Product } from '../../types';
 import { useApp } from '../../context/AppContext';
 import { storage } from '../../services/storage';
+import { safeOpenUrl } from '../../utils/navigation';
 
 interface ProductDetailModalProps {
   product: Product | null;
@@ -57,7 +58,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   const handleWhatsAppInquiry = () => {
     const msg = storage.generateProductInquiryMessage(name, product.sku, language);
     const link = storage.getWhatsAppLink(msg);
-    window.open(link, '_blank', 'noopener,noreferrer');
+    safeOpenUrl(link);
   };
 
   // Related products from same category

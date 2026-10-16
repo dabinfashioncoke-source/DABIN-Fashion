@@ -3,6 +3,7 @@ import { Eye, MessageCircle, Play } from 'lucide-react';
 import { Product } from '../../types';
 import { useApp } from '../../context/AppContext';
 import { storage } from '../../services/storage';
+import { safeOpenUrl } from '../../utils/navigation';
 
 interface ProductCardProps {
   product: Product;
@@ -20,7 +21,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onOpenDetails
     e.stopPropagation();
     const msg = storage.generateProductInquiryMessage(name, product.sku, language);
     const link = storage.getWhatsAppLink(msg);
-    window.open(link, '_blank', 'noopener,noreferrer');
+    safeOpenUrl(link);
   };
 
   // Status text styling

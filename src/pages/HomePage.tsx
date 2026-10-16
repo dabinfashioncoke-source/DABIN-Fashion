@@ -11,6 +11,7 @@ import {
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { storage } from '../services/storage';
+import { safeOpenUrl } from '../utils/navigation';
 import { Product } from '../types';
 import { DeliveryDestinationsSection } from '../components/public/DeliveryDestinationsSection';
 import { EqualPricingBanner } from '../components/public/EqualPricingBanner';
@@ -28,7 +29,7 @@ export const HomePage: React.FC = () => {
 
   const handleWhatsAppContact = () => {
     const link = storage.getWhatsAppLink(t.whatsapp.generalGreeting);
-    window.open(link, '_blank', 'noopener,noreferrer');
+    safeOpenUrl(link);
   };
 
   return (
