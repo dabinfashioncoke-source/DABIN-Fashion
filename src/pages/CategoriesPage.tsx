@@ -4,9 +4,7 @@ import { useApp } from '../context/AppContext';
 import { storage } from '../services/storage';
 
 export const CategoriesPage: React.FC = () => {
-  const { language, t, navigateTo } = useApp();
-  const categories = storage.getCategories();
-  const products = storage.getPublishedProducts();
+  const { language, t, navigateTo, categories, publishedProducts: products } = useApp();
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-10">

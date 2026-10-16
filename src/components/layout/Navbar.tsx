@@ -23,6 +23,7 @@ export const Navbar: React.FC = () => {
     currentRoute,
     navigateTo,
     currentUser,
+    settings,
   } = useApp();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -43,31 +44,38 @@ export const Navbar: React.FC = () => {
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
+  const showAnnouncement = settings.showAnnouncementBar ?? true;
+  const announcementText =
+    language === 'fr'
+      ? settings.announcementTextFr || 'Expéditions vers la RDC (Bukavu, Goma, Bunia...) & Burundi (Bujumbura)'
+      : settings.announcementTextEn || 'Dispatches to DR Congo (Bukavu, Goma, Bunia...) & Burundi (Bujumbura)';
+
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#E8E8EC] transition-all">
       {/* Top Utility Announcement Bar */}
-      <div className="bg-[#171719] text-white text-xs py-1.5 px-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="font-semibold text-[#D4AF37] tracking-wider uppercase text-[11px]">
-              Nairobi, Kenya
-            </span>
-            <span className="text-gray-400 hidden sm:inline">·</span>
-            <span className="text-gray-300 hidden sm:inline">
-              {language === 'fr'
-                ? 'Expéditions vers la RDC (Bukavu, Goma, Bunia...) & Burundi (Bujumbura)'
-                : 'Dispatches to DR Congo (Bukavu, Goma, Bunia...) & Burundi (Bujumbura)'}
-            </span>
-          </div>
+      {showAnnouncement && (
+        <div className="bg-[#171719] text-white text-xs py-1.5 px-4">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="font-semibold text-[#D4AF37] tracking-wider uppercase text-[11px]">
+                {settings.businessLocation || 'Nairobi, Kenya'}
+              </span>
+              <span className="text-gray-400 hidden sm:inline">·</span>
+              <span className="text-gray-300 hidden sm:inline truncate max-w-xl">
+                {announcementText}
+              </span>
+            </div>
 
-          <div className="flex items-center gap-4 text-xs">
-            <a
-              href={`tel:${OFFICIAL_BUSINESS_INFO.phone}`}
-              className="hidden md:flex items-center gap-1.5 text-gray-300 hover:text-white transition-colors"
-            >
-              <Phone className="w-3 h-3 text-[#D4AF37]" />
-              <span>{OFFICIAL_BUSINESS_INFO.whatsappFormatted}</span>
-            </a>
+            <div className="flex items-center gap-4 text-xs">
+              <a
+                href={storage.getWhatsAppLink(t.whatsapp.generalGreeting)}
+                target="_blank"
+                rel="noreferrer"
+                className="hidden md:flex items-center gap-1.5 text-gray-300 hover:text-white transition-colors"
+              >
+                <Phone className="w-3 h-3 text-[#D4AF37]" />
+                <span>{settings.whatsappNumber || OFFICIAL_BUSINESS_INFO.whatsappFormatted}</span>
+              </a>
 
             {/* Language Switcher */}
             <div className="flex items-center bg-[#242428] rounded p-0.5 border border-[#333338]">
@@ -127,6 +135,7 @@ export const Navbar: React.FC = () => {
           </div>
         </div>
       </div>
+    )}
 
       {/* Main Navigation Bar */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

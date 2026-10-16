@@ -16,7 +16,14 @@ import { ProductCard } from '../components/public/ProductCard';
 import { ProductDetailModal } from '../components/public/ProductDetailModal';
 
 export const ShopCatalogPage: React.FC = () => {
-  const { language, t, currentRoute, navigateTo } = useApp();
+  const {
+    language,
+    t,
+    currentRoute,
+    navigateTo,
+    categories,
+    publishedProducts: allPublishedProducts,
+  } = useApp();
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   // Parse query params from currentRoute (e.g. #/shop?cat=cat-clothes or filter=new)
@@ -48,9 +55,6 @@ export const ShopCatalogPage: React.FC = () => {
       setAvailabilityFilter('in_stock');
     }
   }, [initialFilter]);
-
-  const categories = storage.getCategories();
-  const allPublishedProducts = storage.getPublishedProducts();
 
   // Filtered and sorted products list
   const filteredProducts = useMemo(() => {

@@ -18,11 +18,8 @@ import { ProductCard } from '../components/public/ProductCard';
 import { ProductDetailModal } from '../components/public/ProductDetailModal';
 
 export const HomePage: React.FC = () => {
-  const { language, t, navigateTo, settings } = useApp();
+  const { language, t, navigateTo, settings, categories, publishedProducts } = useApp();
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-
-  const categories = storage.getCategories();
-  const publishedProducts = storage.getPublishedProducts();
 
   const featuredProducts = publishedProducts.filter((p) => p.featured).slice(0, 4);
   const newArrivals = [...publishedProducts]

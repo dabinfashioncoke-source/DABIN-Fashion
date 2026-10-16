@@ -256,6 +256,11 @@ export interface WebsiteSettings {
   whatsappNumber: string;
   contactEmail: string;
   businessLocation: string;
+  primarySloganFr?: string;
+  englishSlogan?: string;
+  showAnnouncementBar?: boolean;
+  announcementTextEn?: string;
+  announcementTextFr?: string;
 
   // Commercial Documents Payment & Banking Settings (Configured in CMS & Settings)
   mpesaTillNumber?: string;

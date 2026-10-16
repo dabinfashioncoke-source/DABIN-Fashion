@@ -6,12 +6,18 @@ import { OFFICIAL_BUSINESS_INFO } from '../../constants/initialData';
 import { storage } from '../../services/storage';
 
 export const Footer: React.FC = () => {
-  const { language, setLanguage, t, navigateTo, currentUser } = useApp();
+  const { language, setLanguage, t, navigateTo, currentUser, settings, destinations } = useApp();
 
   const handleWhatsAppClick = () => {
     const url = storage.getWhatsAppLink(t.whatsapp.generalGreeting);
     window.open(url, '_blank', 'noopener,noreferrer');
   };
+
+  const drcCities = destinations.filter((d) => d.country === 'DR Congo' && d.active);
+  const burundiCities = destinations.filter((d) => d.country === 'Burundi' && d.active);
+
+  const primarySloganFr = settings.primarySloganFr || OFFICIAL_BUSINESS_INFO.primarySloganFr;
+  const englishSlogan = settings.englishSlogan || OFFICIAL_BUSINESS_INFO.englishSlogan;
 
   return (
     <footer className="bg-[#171719] text-gray-300 border-t border-[#26262B]">
@@ -33,7 +39,7 @@ export const Footer: React.FC = () => {
                 {language === 'fr' ? 'Notre devise :' : 'Our Motto:'}
               </div>
               <p className="text-sm text-white font-medium italic mt-0.5">
-                « {OFFICIAL_BUSINESS_INFO.primarySloganFr} » · « {OFFICIAL_BUSINESS_INFO.englishSlogan} »
+                « {primarySloganFr} » · « {englishSlogan} »
               </p>
             </div>
           </div>
@@ -121,12 +127,18 @@ export const Footer: React.FC = () => {
                   {language === 'fr' ? 'RD Congo (RDC) :' : 'DR Congo (DRC):'}
                 </span>
                 <p className="leading-relaxed">
-                  Bukavu · Goma · Bunia · Butembo · Beni · Durba · Lubumbashi · Kolwezi
+                  {drcCities.length > 0
+                    ? drcCities.map((d) => d.city).join(' · ')
+                    : 'Bukavu · Goma · Bunia · Butembo · Beni · Durba · Lubumbashi · Kolwezi'}
                 </p>
               </div>
               <div className="pt-1">
                 <span className="font-semibold text-gray-200 block mb-1">Burundi :</span>
-                <p>Bujumbura</p>
+                <p>
+                  {burundiCities.length > 0
+                    ? burundiCities.map((d) => d.city).join(' · ')
+                    : 'Bujumbura'}
+                </p>
               </div>
               <div className="pt-2">
                 <button
@@ -150,15 +162,15 @@ export const Footer: React.FC = () => {
             <ul className="space-y-3 text-sm text-gray-400">
               <li className="flex items-start gap-2.5">
                 <MapPin className="w-4 h-4 text-[#7B173B] shrink-0 mt-0.5" />
-                <span>{OFFICIAL_BUSINESS_INFO.location}</span>
+                <span>{settings.businessLocation || OFFICIAL_BUSINESS_INFO.location}</span>
               </li>
               <li className="flex items-center gap-2.5">
                 <Mail className="w-4 h-4 text-[#7B173B] shrink-0" />
                 <a
-                  href={`mailto:${OFFICIAL_BUSINESS_INFO.email}`}
+                  href={`mailto:${settings.contactEmail || OFFICIAL_BUSINESS_INFO.email}`}
                   className="hover:text-white transition-colors text-xs"
                 >
-                  {OFFICIAL_BUSINESS_INFO.email}
+                  {settings.contactEmail || OFFICIAL_BUSINESS_INFO.email}
                 </a>
               </li>
               <li className="flex items-center gap-2.5">
@@ -168,7 +180,7 @@ export const Footer: React.FC = () => {
                   onClick={handleWhatsAppClick}
                   className="hover:text-white text-xs font-medium text-left"
                 >
-                  WhatsApp : {OFFICIAL_BUSINESS_INFO.whatsappFormatted}
+                  WhatsApp : {settings.whatsappNumber || OFFICIAL_BUSINESS_INFO.whatsappFormatted}
                 </button>
               </li>
             </ul>

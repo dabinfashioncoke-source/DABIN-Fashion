@@ -4,8 +4,8 @@ import { useApp } from '../../context/AppContext';
 import { storage } from '../../services/storage';
 
 export const DeliveryDestinationsSection: React.FC = () => {
-  const { language, t, navigateTo } = useApp();
-  const destinations = storage.getDestinations().filter((d) => d.active);
+  const { language, t, navigateTo, destinations: allDestinations } = useApp();
+  const destinations = allDestinations.filter((d) => d.active);
 
   const drcCities = destinations.filter((d) => d.country === 'DR Congo');
   const burundiCities = destinations.filter((d) => d.country === 'Burundi');

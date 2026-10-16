@@ -14,9 +14,9 @@ import { OFFICIAL_BUSINESS_INFO } from '../constants/initialData';
 import { DabinLogo } from '../components/common/DabinLogo';
 
 export const AboutPage: React.FC = () => {
-  const { language, t, navigateTo, settings } = useApp();
+  const { language, t, navigateTo, settings, destinations: allDestinations } = useApp();
 
-  const destinations = storage.getDestinations().filter((d) => d.active);
+  const destinations = allDestinations.filter((d) => d.active);
   const drcCities = destinations.filter((d) => d.country === 'DR Congo');
   const burundiCities = destinations.filter((d) => d.country === 'Burundi');
 
@@ -24,6 +24,9 @@ export const AboutPage: React.FC = () => {
     const link = storage.getWhatsAppLink(t.whatsapp.generalGreeting);
     window.open(link, '_blank', 'noopener,noreferrer');
   };
+
+  const primarySloganFr = settings.primarySloganFr || OFFICIAL_BUSINESS_INFO.primarySloganFr;
+  const englishSlogan = settings.englishSlogan || OFFICIAL_BUSINESS_INFO.englishSlogan;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-16">
@@ -40,7 +43,7 @@ export const AboutPage: React.FC = () => {
         </h1>
         <p className="text-sm font-medium text-gray-500 flex items-center justify-center gap-2">
           <MapPin className="w-4 h-4 text-[#7B173B]" />
-          <span>{t.about.locationInfo}</span>
+          <span>{settings.businessLocation || t.about.locationInfo}</span>
         </p>
       </div>
 
@@ -51,10 +54,10 @@ export const AboutPage: React.FC = () => {
             <DabinLogo size="lg" sloganLanguage={language} className="mb-4" />
             <div className="p-3 bg-[#F4F4F6] rounded-xl text-xs text-gray-600 w-full text-center">
               <span className="font-bold text-[#171719] block mb-0.5">
-                {OFFICIAL_BUSINESS_INFO.primarySloganFr}
+                {primarySloganFr}
               </span>
               <span className="text-gray-500 italic">
-                {OFFICIAL_BUSINESS_INFO.englishSlogan}
+                {englishSlogan}
               </span>
             </div>
           </div>

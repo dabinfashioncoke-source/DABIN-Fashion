@@ -5,6 +5,7 @@ import {
   INITIAL_DESTINATIONS,
   INITIAL_FINANCE_TRANSACTIONS,
   INITIAL_PRODUCTS,
+  INITIAL_SALES,
   INITIAL_SETTINGS,
   INITIAL_SUPPLIERS,
   INITIAL_USERS,
@@ -58,8 +59,75 @@ const STORAGE_KEYS = {
 };
 
 class StorageService {
+  private isSyncing = false;
+
   constructor() {
     this.initializeIfEmpty();
+    if (typeof window !== 'undefined') {
+      // Auto-sync in background on client initialization
+      setTimeout(() => this.syncFromServer(), 100);
+    }
+  }
+
+  public notifyUpdate(key: string, data?: any): void {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('dabin_store_synced', { detail: { key, data } }));
+    }
+  }
+
+  public postToServer(endpoint: string, data: any, method: 'POST' | 'DELETE' = 'POST'): void {
+    if (typeof fetch === 'undefined') return;
+    try {
+      fetch(endpoint, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: method === 'POST' ? JSON.stringify(data) : undefined,
+      }).catch((err) => {
+        console.warn(`[DABIN Server Sync] Background sync to ${endpoint}:`, err?.message || err);
+      });
+    } catch (e) {
+      // Silent catch; local cache remains active
+    }
+  }
+
+  public getLastUpdated(): string {
+    return this.getItem('dabin_fashion_last_updated_v1', '');
+  }
+
+  public async syncFromServer(): Promise<boolean> {
+    if (typeof fetch === 'undefined' || this.isSyncing) return false;
+    this.isSyncing = true;
+    try {
+      const res = await fetch('/api/database', { cache: 'no-store' });
+      if (!res.ok) {
+        this.isSyncing = false;
+        return false;
+      }
+      const db = await res.json();
+      if (!db || typeof db !== 'object') {
+        this.isSyncing = false;
+        return false;
+      }
+
+      if (db.settings) this.setItem(STORAGE_KEYS.SETTINGS, db.settings);
+      if (Array.isArray(db.products)) this.setItem(STORAGE_KEYS.PRODUCTS, db.products);
+      if (Array.isArray(db.categories)) this.setItem(STORAGE_KEYS.CATEGORIES, db.categories);
+      if (Array.isArray(db.destinations)) this.setItem(STORAGE_KEYS.DESTINATIONS, db.destinations);
+      if (Array.isArray(db.commercialDocuments)) this.setItem(STORAGE_KEYS.COMMERCIAL_DOCUMENTS, db.commercialDocuments);
+      if (Array.isArray(db.financeTransactions)) this.setItem(STORAGE_KEYS.FINANCE_TRANSACTIONS, db.financeTransactions);
+      if (Array.isArray(db.sales)) this.setItem(STORAGE_KEYS.SALES, db.sales);
+      if (Array.isArray(db.customers)) this.setItem(STORAGE_KEYS.CUSTOMERS, db.customers);
+      if (Array.isArray(db.suppliers)) this.setItem(STORAGE_KEYS.SUPPLIERS, db.suppliers);
+      if (db.lastUpdated) this.setItem('dabin_fashion_last_updated_v1', db.lastUpdated);
+
+      this.notifyUpdate('all', db);
+      this.isSyncing = false;
+      return true;
+    } catch (err) {
+      console.warn('[DABIN Server Sync] Could not fetch remote server state, using local storage fallback.', err);
+      this.isSyncing = false;
+      return false;
+    }
   }
 
   private getItem<T>(key: string, defaultValue: T): T {
@@ -110,41 +178,7 @@ class StorageService {
     }
     // Session is null by default; requires DABIN Staff authentication
     if (!localStorage.getItem(STORAGE_KEYS.SALES)) {
-      // Seed an initial verified showroom sale
-      const seedSale: Sale = {
-        id: 'sale-seed-1',
-        receiptNumber: 'DABIN-REC-2026-0001',
-        timestamp: '2026-02-05T14:30:00Z',
-        cashierId: 'user-cashier-3',
-        cashierName: 'Jean-Luc Habimana',
-        customerId: 'cust-1',
-        customerName: 'Alain Kanyamihigo',
-        customerPhone: '+243998123456',
-        items: [
-          {
-            productId: 'prod-1',
-            sku: 'DAB-JKT-001',
-            productName: 'Vintage Heritage Trench Coat',
-            quantity: 2,
-            unitPrice: 4500,
-            currency: 'KES',
-            costPriceAtSale: 2200,
-            totalPrice: 9000,
-          },
-        ],
-        subtotal: 9000,
-        discount: 0,
-        total: 9000,
-        currency: 'KES',
-        exchangeRateUsed: 130,
-        paymentMethod: 'bank_transfer',
-        paymentStatus: 'paid',
-        amountPaid: 9000,
-        outstandingBalance: 0,
-        channel: 'physical_shop',
-        notes: 'Dispatched to Bukavu cargo forwarding.',
-      };
-      this.setItem(STORAGE_KEYS.SALES, [seedSale]);
+      this.setItem(STORAGE_KEYS.SALES, INITIAL_SALES);
     }
     if (!localStorage.getItem(STORAGE_KEYS.INVENTORY_MOVEMENTS)) {
       const initialMovements: InventoryMovement[] = [
@@ -209,6 +243,8 @@ class StorageService {
     const updated = { ...current, ...updates };
     this.setItem(STORAGE_KEYS.SETTINGS, updated);
     this.logAudit('UPDATE_SETTINGS', 'Storefront and currency configuration updated');
+    this.postToServer('/api/settings', updated);
+    this.notifyUpdate('settings', updated);
     return updated;
   }
 
@@ -279,6 +315,8 @@ class StorageService {
         products[index] = updated;
         this.setItem(STORAGE_KEYS.PRODUCTS, products);
         this.logAudit('UPDATE_PRODUCT', `Updated product ${updated.nameEn} (SKU: ${updated.sku})`);
+        this.postToServer('/api/products', updated);
+        this.notifyUpdate('products', products);
         return updated;
       }
     }
@@ -349,6 +387,8 @@ class StorageService {
     }
 
     this.logAudit('CREATE_PRODUCT', `Created product ${newProduct.nameEn} (SKU: ${newProduct.sku})`);
+    this.postToServer('/api/products', newProduct);
+    this.notifyUpdate('products', products);
     return newProduct;
   }
 
@@ -372,6 +412,8 @@ class StorageService {
         'ARCHIVE_PRODUCT',
         `Product ${product.nameEn} (${product.sku}) archived to preserve past transaction history.`
       );
+      this.postToServer('/api/products', product);
+      this.notifyUpdate('products', products);
       return {
         success: true,
         message: 'Product is linked to sales history and has been safely archived instead of deleted.',
@@ -382,6 +424,8 @@ class StorageService {
     const filtered = products.filter((p) => p.id !== productId);
     this.setItem(STORAGE_KEYS.PRODUCTS, filtered);
     this.logAudit('DELETE_PRODUCT', `Permanently deleted unsold product ${product.nameEn}`);
+    this.postToServer(`/api/products/${productId}`, {}, 'DELETE');
+    this.notifyUpdate('products', filtered);
     return { success: true, message: 'Product deleted permanently.' };
   }
 
@@ -431,6 +475,8 @@ class StorageService {
       `Adjusted ${product.sku} stock from ${prevQty} to ${product.quantityOnHand}. Reason: ${reason}`
     );
 
+    this.postToServer('/api/products', product);
+    this.notifyUpdate('products', products);
     return product;
   }
 
@@ -448,11 +494,21 @@ class StorageService {
       categories.push(category);
     }
     this.setItem(STORAGE_KEYS.CATEGORIES, categories);
+    this.postToServer('/api/categories', category);
+    this.notifyUpdate('categories', categories);
+  }
+
+  public deleteCategory(id: string): void {
+    const categories = this.getCategories().filter((c) => c.id !== id);
+    this.setItem(STORAGE_KEYS.CATEGORIES, categories);
+    this.postToServer(`/api/categories/${id}`, {}, 'DELETE');
+    this.notifyUpdate('categories', categories);
   }
 
   // --- POS & SALES ENGINE ---
   public getSales(): Sale[] {
-    return this.getItem(STORAGE_KEYS.SALES, []);
+    const sales = this.getItem<Sale[]>(STORAGE_KEYS.SALES, INITIAL_SALES);
+    return sales && sales.length > 0 ? sales : INITIAL_SALES;
   }
 
   public recordSale(saleData: {
@@ -579,6 +635,9 @@ class StorageService {
     const sales = this.getSales();
     sales.unshift(newSale);
     this.setItem(STORAGE_KEYS.SALES, sales);
+    this.postToServer('/api/sales', newSale);
+    this.notifyUpdate('sales', sales);
+    this.notifyUpdate('products', products);
 
     // 3. Update Customer History if linked
     if (saleData.customerId) {
@@ -874,6 +933,16 @@ class StorageService {
     }
     this.setItem(STORAGE_KEYS.DESTINATIONS, list);
     this.logAudit('UPDATE_DESTINATION', `Updated delivery city ${destination.city} (${destination.country})`);
+    this.postToServer('/api/destinations', destination);
+    this.notifyUpdate('destinations', list);
+  }
+
+  public deleteDestination(id: string): void {
+    const list = this.getDestinations().filter((d) => d.id !== id);
+    this.setItem(STORAGE_KEYS.DESTINATIONS, list);
+    this.logAudit('DELETE_DESTINATION', `Deleted delivery city id: ${id}`);
+    this.postToServer(`/api/destinations/${id}`, {}, 'DELETE');
+    this.notifyUpdate('destinations', list);
   }
 
   // --- AUTH & USERS ---
@@ -952,8 +1021,9 @@ class StorageService {
 
   // --- WHATSAPP CLICK-TO-CHAT URL BUILDER ---
   public getWhatsAppLink(message: string): string {
-    // International WhatsApp number +254181740330 -> cleaned 254181740330
-    const rawNumber = OFFICIAL_BUSINESS_INFO.whatsappRaw.replace(/[^0-9]/g, '');
+    const custom = this.getSettings().whatsappNumber;
+    const phone = custom && custom.trim() ? custom : OFFICIAL_BUSINESS_INFO.whatsappRaw;
+    const rawNumber = phone.replace(/[^0-9]/g, '');
     return `https://wa.me/${rawNumber}?text=${encodeURIComponent(message)}`;
   }
 

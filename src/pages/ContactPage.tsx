@@ -14,7 +14,7 @@ import { OFFICIAL_BUSINESS_INFO } from '../constants/initialData';
 import { storage } from '../services/storage';
 
 export const ContactPage: React.FC = () => {
-  const { language, t } = useApp();
+  const { language, t, settings } = useApp();
 
   const [fullName, setFullName] = useState('');
   const [contactInfo, setContactInfo] = useState('');
@@ -82,12 +82,12 @@ export const ContactPage: React.FC = () => {
                     {t.contact.directCallOrChat}
                   </span>
                   <a
-                    href={`https://wa.me/254181740330`}
+                    href={storage.getWhatsAppLink(t.whatsapp.generalGreeting)}
                     target="_blank"
                     rel="noreferrer"
                     className="text-emerald-700 font-semibold hover:underline block text-sm"
                   >
-                    {OFFICIAL_BUSINESS_INFO.whatsappFormatted}
+                    {settings.whatsappNumber || OFFICIAL_BUSINESS_INFO.whatsappFormatted}
                   </a>
                   <p className="text-gray-500 text-[11px]">
                     {language === 'fr'
@@ -105,10 +105,10 @@ export const ContactPage: React.FC = () => {
                     {t.contact.officialEmail}
                   </span>
                   <a
-                    href={`mailto:${OFFICIAL_BUSINESS_INFO.email}`}
+                    href={`mailto:${settings.contactEmail || OFFICIAL_BUSINESS_INFO.email}`}
                     className="text-gray-800 font-semibold hover:underline block text-sm"
                   >
-                    {OFFICIAL_BUSINESS_INFO.email}
+                    {settings.contactEmail || OFFICIAL_BUSINESS_INFO.email}
                   </a>
                   <p className="text-gray-500 text-[11px]">
                     {language === 'fr'
@@ -126,7 +126,7 @@ export const ContactPage: React.FC = () => {
                     {t.contact.hqLocation}
                   </span>
                   <span className="text-gray-800 font-medium block text-sm">
-                    {OFFICIAL_BUSINESS_INFO.location}
+                    {settings.businessLocation || OFFICIAL_BUSINESS_INFO.location}
                   </span>
                   <p className="text-gray-500 text-[11px]">
                     {language === 'fr'

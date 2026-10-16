@@ -1,5 +1,6 @@
 import React from 'react';
 import { AppProvider, useApp } from './context/AppContext';
+import { storage } from './services/storage';
 import { Navbar } from './components/layout/Navbar';
 import { Footer } from './components/layout/Footer';
 import { HomePage } from './pages/HomePage';
@@ -36,10 +37,12 @@ const AppRouter: React.FC = () => {
               : 'Our boutique is currently undergoing scheduled maintenance. For immediate orders or inquiries, please reach us on WhatsApp.'}
           </p>
           <a
-            href="https://wa.me/254181740330"
-            className="inline-block py-2.5 px-6 bg-[#25D366] text-white text-xs font-semibold rounded-xl"
+            href={storage.getWhatsAppLink(language === 'fr' ? 'Bonjour DABIN Fashion, je vous contacte depuis le site en maintenance.' : 'Hello DABIN Fashion, contacting you while the site is in maintenance.')}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-block py-2.5 px-6 bg-[#25D366] hover:bg-[#20ba5a] text-white text-xs font-semibold rounded-xl transition-colors"
           >
-            +254 181 740 330 (WhatsApp)
+            {settings.whatsappNumber || '+254 181 740 330'} (WhatsApp)
           </a>
         </div>
       </div>

@@ -43,7 +43,9 @@ export async function createPdfFromElement(
       quality: 0.98,
       pixelRatio: 2, // Sharp high-resolution text and logos
       backgroundColor: '#ffffff',
-      cacheBust: true,
+      cacheBust: false,
+      skipFonts: true, // Prevents SecurityError on cross-origin stylesheets (e.g. Google Fonts)
+      fontEmbedCSS: '', // Disable font inlining from cross-origin CSS rules
       filter: (node) => {
         // Exclude elements with 'no-print' class from the PDF output
         if (node instanceof HTMLElement && node.classList.contains('no-print')) {

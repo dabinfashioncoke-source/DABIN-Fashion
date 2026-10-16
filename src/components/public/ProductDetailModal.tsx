@@ -28,7 +28,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   onClose,
   onSelectProduct,
 }) => {
-  const { language, formatPrice, t, settings } = useApp();
+  const { language, formatPrice, t, settings, publishedProducts } = useApp();
   const [selectedMediaIndex, setSelectedMediaIndex] = useState(0);
   const [zoomOpen, setZoomOpen] = useState(false);
 
@@ -61,8 +61,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   };
 
   // Related products from same category
-  const relatedProducts = storage
-    .getPublishedProducts()
+  const relatedProducts = publishedProducts
     .filter((p) => p.categoryId === product.categoryId && p.id !== product.id)
     .slice(0, 3);
 
